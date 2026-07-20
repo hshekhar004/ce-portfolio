@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080808">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Owner Studio | HS Portfolio</title>
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="js/content.js" defer></script>
+  <script src="js/admin.js" defer></script>
+</head>
+<body>
+  <main class="auth-shell" id="authShell">
+    <a class="studio-mark" href="index.html" aria-label="Return to portfolio">HS</a>
+    <section class="login-card" id="loginCard">
+      <p class="overline">PRIVATE OWNER ACCESS</p>
+      <h1>Portfolio<br>Owner Studio.</h1>
+      <p class="login-intro">Securely edit content, visual design, section order, experience, credentials, and images.</p>
+      <form id="loginForm">
+        <label>Username<input id="loginUsername" name="username" autocomplete="username" required></label>
+        <label>Password<input id="loginPassword" name="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary-button" type="submit">Enter Owner Studio</button>
+      </form>
+      <button class="text-button" id="showReset" type="button">Forgot password?</button>
+      <p class="form-message" id="loginMessage" role="alert"></p>
+    </section>
+
+    <section class="login-card hidden" id="resetCard">
+      <p class="overline">PASSWORD RECOVERY</p>
+      <h1>Use your<br>GitHub access.</h1>
+      <p class="login-intro">GitHub Pages cannot send an email OTP. Your GitHub account is the final publishing authority. Follow the password-reset instructions in DEPLOYMENT.md, then replace <strong>js/content.js</strong>.</p>
+      <button class="text-button" id="backToLogin" type="button">Back to login</button>
+      <p class="form-message" id="resetMessage" role="alert"></p>
+    </section>
+  </main>
+
+  <main class="studio hidden" id="studio">
+    <header class="studio-header">
+      <div class="studio-brand"><span>HS</span><div><strong>Owner Studio</strong><small id="saveStatus">All changes saved</small></div></div>
+      <div class="studio-actions">
+        <a class="secondary-button" href="index.html" target="_blank" rel="noopener">Preview site ↗</a>
+        <button class="secondary-button" id="logoutButton" type="button">Log out</button>
+        <button class="secondary-button" id="exportButton" type="button">Export content.js</button>
+        <button class="primary-button compact" id="saveButton" type="button">Save changes</button>
+      </div>
+    </header>
+
+    <div class="studio-layout">
+      <aside class="studio-nav" id="studioNav" aria-label="Editor sections">
+        <button class="active" data-panel="identity">Identity</button>
+        <button data-panel="theme">Design system</button>
+        <button data-panel="sections">Section order</button>
+        <button data-panel="metrics">Impact metrics</button>
+        <button data-panel="capabilities">Expertise</button>
+        <button data-panel="stories">Track record</button>
+        <button data-panel="cases">Selected work</button>
+        <button data-panel="process">Consulting approach</button>
+        <button data-panel="skills">Skills</button>
+        <button data-panel="experience">Experience</button>
+        <button data-panel="education">Education</button>
+        <button data-panel="credentials">Credentials</button>
+        <button data-panel="about">About + photo</button>
+        <button data-panel="contact">Contact + footer</button>
+        <button data-panel="advanced">Advanced</button>
+      </aside>
+
+      <div class="mobile-panel-select">
+        <label>Editing section<select id="mobilePanelSelect"></select></label>
+      </div>
+
+      <section class="editor-area" id="editorArea">
+        <div class="editor-panel active" id="panel-identity"></div>
+        <div class="editor-panel" id="panel-theme"></div>
+        <div class="editor-panel" id="panel-sections"></div>
+        <div class="editor-panel" id="panel-metrics"></div>
+        <div class="editor-panel" id="panel-capabilities"></div>
+        <div class="editor-panel" id="panel-stories"></div>
+        <div class="editor-panel" id="panel-cases"></div>
+        <div class="editor-panel" id="panel-process"></div>
+        <div class="editor-panel" id="panel-skills"></div>
+        <div class="editor-panel" id="panel-experience"></div>
+        <div class="editor-panel" id="panel-education"></div>
+        <div class="editor-panel" id="panel-credentials"></div>
+        <div class="editor-panel" id="panel-about"></div>
+        <div class="editor-panel" id="panel-contact"></div>
+        <div class="editor-panel" id="panel-advanced"></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+</body>
+</html>
