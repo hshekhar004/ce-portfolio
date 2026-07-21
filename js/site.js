@@ -137,7 +137,10 @@ function renderTrackRecord() {
 function renderAccountSystem() {
   const section = baseSection('account-system', 'section-dark');
   const grid = document.createElement('div');
+  const stepCount = state.content.accountSteps.length;
+  const balancedColumns = stepCount <= 1 ? 1 : (stepCount === 2 || stepCount === 4 ? 2 : (stepCount === 3 || stepCount === 5 || stepCount === 6 ? 3 : Math.min(4, stepCount)));
   grid.className = 'steps-grid';
+  grid.style.setProperty('--step-columns', balancedColumns);
   state.content.accountSteps.forEach((step) => {
     const card = document.createElement('article');
     card.className = 'step-card reveal';
@@ -151,36 +154,74 @@ function renderAccountSystem() {
 
 function renderCases() {
   const section = baseSection('cases', 'section-dark');
-  const cases = (state.content.cases || []).filter((item) => item.visible && item.document && (item.document.url || item.document.downloadUrl));
+  const cases = (state.content.cases || []).filter((item) => item.visible);
   const list = document.createElement('div');
-  list.className = 'case-list';
+  list.className = 'case-grid';
   cases.forEach((item, index) => {
     const card = document.createElement('article');
-    card.className = 'thesis-card case-card reveal';
+    card.className = 'consulting-case-card reveal';
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', `Open case: ${item.title}`);
     card.innerHTML = `
-      <div class="thesis-heading">
-        <div><span>${item.eyebrow}</span><h3>${item.title}</h3></div>
-        <strong>${String(index + 1).padStart(2, '0')}</strong>
-      </div>
-      <p class="thesis-subtitle">${item.subtitle}</p>
-      <div class="case-analysis-grid">
-        <div><strong>The challenge</strong><p>${item.challenge}</p></div>
-        <div><strong>The approach</strong><p>${item.approach}</p></div>
-        <div><strong>The insight</strong><p>${item.insight}</p></div>
-        <div><strong>Business relevance</strong><p>${item.relevance}</p></div>
-      </div>
-      <div class="thesis-actions"></div>`;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'button button-light magnetic';
-    button.dataset.cursor = item.document.label || state.content.ui.cursorOpen;
-    button.textContent = item.document.label || 'Open document';
-    button.addEventListener('click', () => openDocument(item.document));
-    card.querySelector('.thesis-actions').appendChild(button);
+      <div class="case-card-top"><span>${item.eyebrow || 'CONSULTING CASE'}</span><strong>${String(index + 1).padStart(2, '0')}</strong></div>
+      <h3>${item.title}</h3>
+      <p>${item.cardSummary || item.subtitle || ''}</p>
+      <div class="case-card-actions"></div>`;
+    const actions = card.querySelector('.case-card-actions');
+    (item.documents || []).filter((doc) => doc && (doc.url || doc.downloadUrl)).forEach((doc) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'case-link';
+      btn.innerHTML = `${doc.label || 'Open document'} <span>↗</span>`;
+      btn.addEventListener('click', (event) => { event.stopPropagation(); openDocument(doc); });
+      actions.appendChild(btn);
+    });
+    const open = () => openCaseDetail(item);
+    card.addEventListener('click', open);
+    card.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } });
     list.appendChild(card);
   });
   section.appendChild(list);
   return section;
+}
+
+function openCaseDetail(item) {
+  const modal = byId('caseModal');
+  text(byId('caseModalEyebrow'), item.eyebrow || 'CONSULTING CASE');
+  const content = byId('caseModalContent');
+  content.replaceChildren();
+  const hero = document.createElement('header');
+  hero.className = 'case-detail-hero';
+  hero.innerHTML = `<h2 id="caseModalTitle">${item.title}</h2><p>${item.subtitle || item.cardSummary || ''}</p>`;
+  content.appendChild(hero);
+  const sections = item.detailSections?.length ? item.detailSections : [
+    {title:'The challenge',body:item.challenge,media:[]},{title:'The approach',body:item.approach,media:[]},
+    {title:'The insight',body:item.insight,media:[]},{title:'Business relevance',body:item.relevance,media:[]}
+  ];
+  sections.forEach((block, index) => {
+    const section = document.createElement('section');
+    section.className = 'case-detail-section';
+    section.innerHTML = `<span>${String(index + 1).padStart(2,'0')}</span><div><h3>${block.title || ''}</h3><div class="case-rich-text">${block.body || ''}</div></div>`;
+    const mediaGrid = document.createElement('div');
+    mediaGrid.className = 'case-media-grid';
+    (block.media || []).filter(m => m.url || m.downloadUrl).forEach((media) => {
+      if (media.type === 'image') {
+        const figure=document.createElement('figure'); figure.innerHTML=`<img src="${media.url || media.downloadUrl}" alt="${media.caption || block.title || 'Case image'}">${media.caption ? `<figcaption>${media.caption}</figcaption>`:''}`; mediaGrid.appendChild(figure);
+      } else {
+        const button=document.createElement('button'); button.type='button'; button.className='case-media-document'; button.innerHTML=`<strong>${media.label || media.caption || 'Open document'}</strong><span>${String(media.type || 'file').toUpperCase()} ↗</span>`; button.addEventListener('click',()=>openDocument(media)); mediaGrid.appendChild(button);
+      }
+    });
+    if (mediaGrid.children.length) section.querySelector('div').appendChild(mediaGrid);
+    content.appendChild(section);
+  });
+  const docs=(item.documents || []).filter(d=>d.url||d.downloadUrl);
+  if (docs.length) {
+    const actions=document.createElement('div'); actions.className='case-detail-documents';
+    docs.forEach(doc=>{const b=document.createElement('button');b.type='button';b.className='button button-dark magnetic';b.textContent=doc.label||'Open document';b.addEventListener('click',()=>openDocument(doc));actions.appendChild(b);});
+    content.appendChild(actions);
+  }
+  modal.showModal(); document.body.classList.add('modal-open');
 }
 
 function renderSkills() {
@@ -546,6 +587,9 @@ function initInteractions() {
     document.body.classList.remove('modal-open');
   };
   byId('modalClose').addEventListener('click', closeModal);
+  const closeCaseModal = () => { byId('caseModal').close(); document.body.classList.remove('modal-open'); };
+  byId('caseModalClose').addEventListener('click', closeCaseModal);
+  byId('caseModal').addEventListener('click', (event) => { if (event.target === byId('caseModal')) closeCaseModal(); });
   byId('documentModal').addEventListener('click', (event) => {
     if (event.target === byId('documentModal')) closeModal();
   });

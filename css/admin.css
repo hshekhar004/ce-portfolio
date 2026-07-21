@@ -334,3 +334,5 @@ small { color: var(--muted); }
   .collection-tools { align-items: flex-start; flex-direction: column; }
   .upload-box { grid-template-columns: 1fr; }
 }
+
+.case-document-editor,.case-media-editor{margin:16px 0;padding:20px;border:1px dashed #c9c9c9;border-radius:14px;background:#fafafa}.case-section-editor{align-items:flex-start}.case-section-editor>.wide{width:100%}.collection-tools span{color:#777;font-size:.75rem}

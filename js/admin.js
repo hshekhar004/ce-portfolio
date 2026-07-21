@@ -74,7 +74,7 @@ const fontOptions = [
 
 const panelLabels = {
   identity: 'Identity', theme: 'Design system', sections: 'Section order', metrics: 'Impact metrics',
-  capabilities: 'Expertise', stories: 'Track record', cases: 'Selected work', process: 'Consulting approach', skills: 'Skills', experience: 'Experience',
+  capabilities: 'Expertise', stories: 'Track record', cases: 'Case portfolio', process: 'Consulting approach', skills: 'Skills', experience: 'Experience',
   education: 'Education', credentials: 'Credentials', about: 'About + photo', contact: 'Contact + footer', advanced: 'Advanced'
 };
 
@@ -222,7 +222,7 @@ function cardActions(collection, index) {
 }
 
 function collectionLimit(key) {
-  return ({ commercialSkills: 300, softSkills: 200, softwareSkills: 100, languageSkills: 10, subjects: 100, experiences: 50, bullets: 50 })[key] || 50;
+  return ({ commercialSkills: 300, softSkills: 200, softwareSkills: 100, languageSkills: 10, subjects: 100, experiences: 50, bullets: 50, cases: 75, detailSections: 50, media: 10 })[key] || 50;
 }
 
 function collectionHeader(label, key, singular) {
@@ -368,25 +368,45 @@ function stringCollectionBlock(key, label, singular, description) {
 
 function renderCases() {
   const panel = byId('panel-cases');
-  let html = panelHeading('07 · SELECTED WORK', 'Control all case text and three document slots.', 'Exactly three case-document slots are provided: two PDF files and one PowerPoint file. Each accepts files up to 10 MB. A case is shown publicly only when it is marked visible and a file has been uploaded.');
+  let html = panelHeading('07 · CONSULTING CASE PORTFOLIO', 'Build a scalable card-based consulting case library.', 'Add and reorder up to 75 cases. Each case opens as a detailed in-page experience, supports up to 50 editable content sections, up to 10 media items per section, and exactly three main document slots. Every upload accepts up to 10 MB; unused cases and files remain hidden.') + collectionHeader('Consulting cases', 'cases', 'case');
   state.content.cases.forEach((item, index) => {
-    const accept = index === 2 ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation,.pptx' : 'application/pdf,.pdf';
-    const fileLabel = index === 2 ? 'Upload PowerPoint case file (.pptx, max 10 MB)' : `Upload case PDF ${index + 1} (max 10 MB)`;
-    html += `<article class="editor-card"><div class="editor-card-head"><h3>${escapeHtml(item.title)}</h3></div><div class="field-grid">
-      <label class="visibility wide"><input type="checkbox" data-boolean-path="cases.${index}.visible" ${item.visible ? 'checked' : ''}> Show publicly when a file is uploaded</label>
-      ${field(`cases.${index}.eyebrow`, 'Eyebrow', 'text', { wide: true })}
+    item.detailSections ||= [];
+    item.documents ||= [];
+    while (item.documents.length < 3) item.documents.push({label:'Document',type:'pdf',url:'',downloadUrl:'',downloadFilename:''});
+    html += `<article class="editor-card"><div class="editor-card-head"><h3>${escapeHtml(item.title || `Case ${index+1}`)}</h3>${cardActions('cases', index)}</div><div class="field-grid">
+      <label class="visibility wide"><input type="checkbox" data-boolean-path="cases.${index}.visible" ${item.visible ? 'checked' : ''}> Show this case publicly</label>
+      ${field(`cases.${index}.eyebrow`, 'Card eyebrow', 'text', { wide: true })}
       ${field(`cases.${index}.title`, 'Case title', 'textarea', { wide: true })}
-      ${field(`cases.${index}.subtitle`, 'Case subtitle', 'textarea', { wide: true })}
-      ${field(`cases.${index}.challenge`, 'The challenge', 'textarea', { wide: true })}
-      ${field(`cases.${index}.approach`, 'The approach', 'textarea', { wide: true })}
-      ${field(`cases.${index}.insight`, 'The insight', 'textarea', { wide: true })}
-      ${field(`cases.${index}.relevance`, 'Business relevance', 'textarea', { wide: true })}
-      ${field(`cases.${index}.document.label`, 'Document button label', 'text', { wide: true })}
-      ${uploadField(`cases.${index}.document.url`, fileLabel, accept, `cases.${index}.document.downloadUrl`)}
-      ${field(`cases.${index}.document.downloadFilename`, 'Downloaded filename', 'text', { wide: true })}
-    </div></article>`;
+      ${field(`cases.${index}.cardSummary`, 'Short homepage card summary', 'textarea', { wide: true })}
+      ${field(`cases.${index}.subtitle`, 'Case-detail subtitle', 'textarea', { wide: true })}
+    </div>
+    <div class="collection-tools"><strong>Detailed content sections <small>${item.detailSections.length}/50</small></strong><button class="add-button" type="button" data-case-section-add="${index}" ${item.detailSections.length>=50?'disabled':''}>Add section</button></div>
+    <div class="nested-list">${item.detailSections.map((block,sectionIndex)=>caseSectionEditor(index,sectionIndex,block)).join('')}</div>
+    <div class="collection-tools"><strong>Main case documents <small>3/3</small></strong><span>Unused files stay hidden publicly.</span></div>
+    ${item.documents.slice(0,3).map((doc,docIndex)=>`<div class="field-grid case-document-editor">
+      ${field(`cases.${index}.documents.${docIndex}.label`, `Document ${docIndex+1} button label`, 'text', {wide:true})}
+      ${field(`cases.${index}.documents.${docIndex}.type`, 'File type', 'select', {items:['pdf','pptx']})}
+      ${uploadField(`cases.${index}.documents.${docIndex}.url`, 'Upload PDF or PPTX (max 10 MB)', 'application/pdf,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,.pptx', `cases.${index}.documents.${docIndex}.downloadUrl`)}
+      ${field(`cases.${index}.documents.${docIndex}.downloadFilename`, 'Downloaded filename', 'text', {wide:true})}
+    </div>`).join('')}
+    </article>`;
   });
   panel.innerHTML = html;
+}
+
+function caseSectionEditor(caseIndex, sectionIndex, block) {
+  block.media ||= [];
+  return `<div class="nested-item case-section-editor"><span class="index">${sectionIndex+1}</span><div class="wide">
+    <div class="field-grid">${field(`cases.${caseIndex}.detailSections.${sectionIndex}.title`, 'Section title', 'text', {wide:true})}${richField(`cases.${caseIndex}.detailSections.${sectionIndex}.body`, 'Section content')}</div>
+    <div class="collection-tools"><strong>Section media <small>${block.media.length}/10</small></strong><button class="add-button" type="button" data-case-media-add="${caseIndex}" data-section-index="${sectionIndex}" ${block.media.length>=10?'disabled':''}>Add media</button></div>
+    ${block.media.map((media,mediaIndex)=>`<div class="field-grid case-media-editor">
+      ${field(`cases.${caseIndex}.detailSections.${sectionIndex}.media.${mediaIndex}.type`, 'Media type', 'select', {items:['image','pdf','pptx']})}
+      ${field(`cases.${caseIndex}.detailSections.${sectionIndex}.media.${mediaIndex}.label`, 'Button label / media name')}
+      ${field(`cases.${caseIndex}.detailSections.${sectionIndex}.media.${mediaIndex}.caption`, 'Image caption or description', 'textarea', {wide:true})}
+      ${uploadField(`cases.${caseIndex}.detailSections.${sectionIndex}.media.${mediaIndex}.url`, 'Upload JPG, PNG, PDF or PPTX (max 10 MB)', 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp,application/pdf,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,.pptx', `cases.${caseIndex}.detailSections.${sectionIndex}.media.${mediaIndex}.downloadUrl`)}
+      <button class="danger-button" type="button" data-case-media-delete="${caseIndex}" data-section-index="${sectionIndex}" data-media-index="${mediaIndex}">Delete media</button>
+    </div>`).join('')}
+  </div><div class="nested-actions"><button type="button" data-case-section-action="up" data-case-index="${caseIndex}" data-section-index="${sectionIndex}">↑</button><button type="button" data-case-section-action="down" data-case-index="${caseIndex}" data-section-index="${sectionIndex}">↓</button><button type="button" data-case-section-action="delete" data-case-index="${caseIndex}" data-section-index="${sectionIndex}">×</button></div></div>`;
 }
 
 function renderSkills() {
@@ -600,6 +620,10 @@ function bindPanel(panel) {
     if (button.dataset.clearMirror) setPath(button.dataset.clearMirror, '');
     renderPanel(state.activePanel);
   }));
+  $$('[data-case-section-add]', panel).forEach((button) => button.addEventListener('click', () => { const c=state.content.cases[Number(button.dataset.caseSectionAdd)]; if(c.detailSections.length<50){c.detailSections.push({title:'New section',body:'',media:[]}); markDirty(); renderPanel('cases');} }));
+  $$('[data-case-section-action]', panel).forEach((button) => button.addEventListener('click', () => { const list=state.content.cases[Number(button.dataset.caseIndex)].detailSections; const i=Number(button.dataset.sectionIndex); const a=button.dataset.caseSectionAction; if(a==='delete') list.splice(i,1); else {const t=a==='up'?i-1:i+1;if(t<0||t>=list.length)return;[list[i],list[t]]=[list[t],list[i]];} markDirty(); renderPanel('cases'); }));
+  $$('[data-case-media-add]', panel).forEach((button) => button.addEventListener('click', () => { const list=state.content.cases[Number(button.dataset.caseMediaAdd)].detailSections[Number(button.dataset.sectionIndex)].media; if(list.length<10){list.push({type:'image',label:'',caption:'',url:'',downloadUrl:'',downloadFilename:''});markDirty();renderPanel('cases');} }));
+  $$('[data-case-media-delete]', panel).forEach((button) => button.addEventListener('click', () => { state.content.cases[Number(button.dataset.caseMediaDelete)].detailSections[Number(button.dataset.sectionIndex)].media.splice(Number(button.dataset.mediaIndex),1);markDirty();renderPanel('cases'); }));
   if (byId('applyJson')) byId('applyJson').addEventListener('click', applyAdvancedJson);
   if (byId('changeOwnerPassword')) byId('changeOwnerPassword').addEventListener('click', changeOwnerPassword);
 }
@@ -620,6 +644,7 @@ function collectionAction(collection, index, action) {
 
 function blankFor(collection) {
   if (configs[collection]) return structuredClone(configs[collection].blank);
+  if (collection === 'cases') return { visible: false, eyebrow: 'CONSULTING CASE', title: 'New consulting case', cardSummary: 'Short homepage summary.', subtitle: 'Detailed case subtitle.', challenge: '', approach: '', insight: '', relevance: '', detailSections: [{ title: 'The challenge', body: '', media: [] }], documents: [{label:'Executive summary',type:'pdf',url:'',downloadUrl:'',downloadFilename:'Executive_Summary.pdf'},{label:'Full case',type:'pdf',url:'',downloadUrl:'',downloadFilename:'Full_Case.pdf'},{label:'Case presentation',type:'pptx',url:'',downloadUrl:'',downloadFilename:'Case_Presentation.pptx'}] };
   if (collection === 'navigation') return { label: 'New link', target: 'contact' };
   if (collection === 'experiences') return { role: 'New role', company: 'Company', location: 'Location', dates: 'Dates', summary: 'Role summary', bullets: ['Add a quantified, defensible achievement.'], image: '' };
   if (collection === 'education') return { degree: 'New qualification', institution: 'Institution', location: 'Location', dates: 'Dates', result: 'Result', description: 'Relevant description', subjects: [], details: ['Add supporting detail.'], image: '', certificate: { label: 'View degree certificate', type: 'pdf', url: '', downloadUrl: '', downloadFilename: 'Degree_Certificate.pdf' } };
