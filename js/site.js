@@ -233,7 +233,7 @@ function renderCasePage(item, index = 0) {
   state.sections.clear();
 
   const page = document.createElement('section');
-  page.className = 'case-page section-dark';
+  page.className = 'case-page';
   page.id = `case-${index + 1}`;
 
   const docs = getCaseDocuments(item);
