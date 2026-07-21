@@ -165,9 +165,14 @@ function renderCases() {
     card.setAttribute('aria-label', `Open case: ${item.title}`);
     card.innerHTML = `
       <div class="case-card-top"><span>${item.eyebrow || 'CONSULTING CASE'}</span><strong>${String(index + 1).padStart(2, '0')}</strong></div>
-      <h3>${item.title}</h3>
-      <p>${item.cardSummary || item.subtitle || ''}</p>
-      <div class="case-card-actions"></div>`;
+      <div class="case-card-body">
+        <h3>${item.title}</h3>
+        <p>${item.cardSummary || item.subtitle || ''}</p>
+      </div>
+      <div class="case-card-footer">
+        <span class="case-open-label">Read full work <b>→</b></span>
+        <div class="case-card-actions"></div>
+      </div>`;
     const actions = card.querySelector('.case-card-actions');
     (item.documents || []).filter((doc) => doc && (doc.url || doc.downloadUrl)).forEach((doc) => {
       const btn = document.createElement('button');
@@ -675,6 +680,38 @@ function renderFooter() {
   text(byId('ownerLogin'), state.content.footer.ownerLoginLabel);
 }
 
+
+function mergeCaseDocuments(defaultDocs = [], draftDocs = []) {
+  return defaultDocs.map((base, index) => ({ ...base, ...(draftDocs[index] || {}) }));
+}
+
+function normalizeContent(content, published) {
+  const next = structuredClone(content || published);
+
+  // Preserve owner edits while ensuring newly added published metrics are not lost
+  // when an older Owner Studio preview is still stored in this browser.
+  const publishedMetrics = published.metrics || [];
+  const currentMetrics = next.metrics || [];
+  if (currentMetrics.length < publishedMetrics.length) {
+    const existingLabels = new Set(currentMetrics.map((item) => item.label));
+    next.metrics = currentMetrics.concat(
+      publishedMetrics.filter((item) => !existingLabels.has(item.label))
+    ).slice(0, publishedMetrics.length);
+  }
+
+  // Upgrade older case drafts with the new card summary and document links.
+  next.cases = (next.cases || []).map((item, index) => {
+    const base = (published.cases || [])[index] || {};
+    return {
+      ...base,
+      ...item,
+      cardSummary: item.cardSummary || base.cardSummary || item.subtitle || '',
+      documents: mergeCaseDocuments(base.documents || [], item.documents || [])
+    };
+  });
+  return next;
+}
+
 async function boot() {
   try {
     const published = await (window.SITE_CONTENT_READY || Promise.resolve(window.SITE_CONTENT));
@@ -683,8 +720,9 @@ async function boot() {
     const previewUntil = Number(localStorage.getItem(PREVIEW_KEY) || 0);
     if (previewUntil > Date.now()) {
       const draft = await loadOwnerDraft();
-      if (draft) state.content = draft;
+      if (draft) state.content = normalizeContent(draft, published);
     }
+    state.content = normalizeContent(state.content, published);
     setTheme(state.content.theme);
     renderHero();
     renderNavigation();
