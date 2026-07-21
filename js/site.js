@@ -247,13 +247,20 @@ function renderCasePage(item, index = 0) {
 
   const hero = document.createElement('header');
   hero.className = 'case-page-hero reveal';
-  hero.innerHTML = `
-    <button class="case-back magnetic" type="button" data-cursor="Go back">← Back to portfolio</button>
+
+  const topBar = document.createElement('div');
+  topBar.className = 'case-page-topbar';
+  topBar.innerHTML = `<button class="case-back magnetic" type="button" data-cursor="Go back">← Back to portfolio</button>`;
+  topBar.appendChild(docActions.cloneNode(true));
+  hero.appendChild(topBar);
+
+  const heading = document.createElement('div');
+  heading.className = 'case-page-heading';
+  heading.innerHTML = `
     <span class="case-page-eyebrow">${item.eyebrow || 'CONSULTING CASE'}</span>
     <h1>${item.title}</h1>
     <p>${item.subtitle || item.cardSummary || ''}</p>`;
-  hero.appendChild(docActions.cloneNode(true));
-  hero.appendChild(downloads.cloneNode(true));
+  hero.appendChild(heading);
   page.appendChild(hero);
 
   const sections = item.detailSections?.length ? item.detailSections : [
