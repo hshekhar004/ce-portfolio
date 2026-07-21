@@ -162,6 +162,7 @@ function renderCases() {
     card.className = 'consulting-case-card reveal';
     card.tabIndex = 0;
     card.setAttribute('role', 'button');
+    card.dataset.cursor = 'Read full work';
     card.setAttribute('aria-label', `Open case: ${item.title}`);
     card.innerHTML = `
       <div class="case-card-top"><span>${item.eyebrow || 'CONSULTING CASE'}</span><strong>${String(index + 1).padStart(2, '0')}</strong></div>
@@ -174,15 +175,8 @@ function renderCases() {
         <div class="case-card-actions"></div>
       </div>`;
     const actions = card.querySelector('.case-card-actions');
-    (item.documents || []).filter((doc) => doc && (doc.url || doc.downloadUrl)).forEach((doc) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'case-link';
-      btn.innerHTML = `${doc.label || 'Open document'} <span>↗</span>`;
-      btn.addEventListener('click', (event) => { event.stopPropagation(); openDocument(doc); });
-      actions.appendChild(btn);
-    });
-    const open = () => openCaseDetail(item);
+    getCaseDocuments(item).forEach((doc) => actions.appendChild(caseDocumentLink(doc)));
+    const open = () => openCaseDetail(item, index);
     card.addEventListener('click', open);
     card.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } });
     list.appendChild(card);
@@ -191,42 +185,117 @@ function renderCases() {
   return section;
 }
 
-function openCaseDetail(item) {
-  const modal = byId('caseModal');
-  text(byId('caseModalEyebrow'), item.eyebrow || 'CONSULTING CASE');
-  const content = byId('caseModalContent');
-  content.replaceChildren();
+function getCaseDocuments(item) {
+  return (item.documents || []).filter((doc) => doc && (doc.url || doc.downloadUrl));
+}
+
+function caseDocumentLink(doc, extraClass = '') {
+  const link = document.createElement('a');
+  link.className = `case-link ${extraClass}`.trim();
+  const href = doc.url || doc.downloadUrl;
+  link.href = href;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.dataset.cursor = doc.cursorLabel || doc.label || 'Open document';
+  link.innerHTML = `${doc.label || 'Open document'} <span>↗</span>`;
+  link.addEventListener('click', (event) => event.stopPropagation());
+  return link;
+}
+
+function caseDownloadLink(doc) {
+  const link = document.createElement('a');
+  link.className = 'case-download-link';
+  const href = doc.downloadUrl || doc.url;
+  link.href = href;
+  link.download = doc.downloadFilename || '';
+  link.dataset.cursor = `Download ${doc.shortLabel || doc.label || 'file'}`;
+  link.innerHTML = `<span>Download</span><strong>${doc.shortLabel || doc.label || 'File'}</strong>`;
+  return link;
+}
+
+function openCaseDetail(item, index = 0) {
+  history.pushState({ caseIndex: index }, '', `#case-${index + 1}`);
+  renderCasePage(item, index);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeCasePage(push = true) {
+  renderSections();
+  initObservers();
+  if (push) history.pushState({}, '', '#cases');
+  requestAnimationFrame(() => byId('cases')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+}
+
+function renderCasePage(item, index = 0) {
+  document.body.classList.add('case-page-open');
+  const mount = byId('sectionMount');
+  mount.replaceChildren();
+  state.sections.clear();
+
+  const page = document.createElement('section');
+  page.className = 'case-page section-dark';
+  page.id = `case-${index + 1}`;
+
+  const docs = getCaseDocuments(item);
+  const docActions = document.createElement('div');
+  docActions.className = 'case-page-actions';
+  docs.forEach((doc) => docActions.appendChild(caseDocumentLink(doc, 'case-page-link')));
+
+  const downloads = document.createElement('div');
+  downloads.className = 'case-downloads';
+  docs.forEach((doc) => downloads.appendChild(caseDownloadLink(doc)));
+
   const hero = document.createElement('header');
-  hero.className = 'case-detail-hero';
-  hero.innerHTML = `<h2 id="caseModalTitle">${item.title}</h2><p>${item.subtitle || item.cardSummary || ''}</p>`;
-  content.appendChild(hero);
+  hero.className = 'case-page-hero reveal';
+  hero.innerHTML = `
+    <button class="case-back magnetic" type="button" data-cursor="Go back">← Back to portfolio</button>
+    <span class="case-page-eyebrow">${item.eyebrow || 'CONSULTING CASE'}</span>
+    <h1>${item.title}</h1>
+    <p>${item.subtitle || item.cardSummary || ''}</p>`;
+  hero.appendChild(docActions.cloneNode(true));
+  hero.appendChild(downloads.cloneNode(true));
+  page.appendChild(hero);
+
   const sections = item.detailSections?.length ? item.detailSections : [
     {title:'The challenge',body:item.challenge,media:[]},{title:'The approach',body:item.approach,media:[]},
     {title:'The insight',body:item.insight,media:[]},{title:'Business relevance',body:item.relevance,media:[]}
   ];
-  sections.forEach((block, index) => {
+  sections.forEach((block, blockIndex) => {
     const section = document.createElement('section');
-    section.className = 'case-detail-section';
-    section.innerHTML = `<span>${String(index + 1).padStart(2,'0')}</span><div><h3>${block.title || ''}</h3><div class="case-rich-text">${block.body || ''}</div></div>`;
+    section.className = 'case-page-section reveal';
+    section.innerHTML = `<span>${String(blockIndex + 1).padStart(2,'0')}</span><div><h2>${block.title || ''}</h2><div class="case-rich-text">${block.body || ''}</div></div>`;
     const mediaGrid = document.createElement('div');
     mediaGrid.className = 'case-media-grid';
     (block.media || []).filter(m => m.url || m.downloadUrl).forEach((media) => {
       if (media.type === 'image') {
         const figure=document.createElement('figure'); figure.innerHTML=`<img src="${media.url || media.downloadUrl}" alt="${media.caption || block.title || 'Case image'}">${media.caption ? `<figcaption>${media.caption}</figcaption>`:''}`; mediaGrid.appendChild(figure);
       } else {
-        const button=document.createElement('button'); button.type='button'; button.className='case-media-document'; button.innerHTML=`<strong>${media.label || media.caption || 'Open document'}</strong><span>${String(media.type || 'file').toUpperCase()} ↗</span>`; button.addEventListener('click',()=>openDocument(media)); mediaGrid.appendChild(button);
+        mediaGrid.appendChild(caseDocumentLink(media, 'case-page-link'));
       }
     });
     if (mediaGrid.children.length) section.querySelector('div').appendChild(mediaGrid);
-    content.appendChild(section);
+    page.appendChild(section);
   });
-  const docs=(item.documents || []).filter(d=>d.url||d.downloadUrl);
-  if (docs.length) {
-    const actions=document.createElement('div'); actions.className='case-detail-documents';
-    docs.forEach(doc=>{const b=document.createElement('button');b.type='button';b.className='button button-dark magnetic';b.textContent=doc.label||'Open document';b.addEventListener('click',()=>openDocument(doc));actions.appendChild(b);});
-    content.appendChild(actions);
-  }
-  modal.showModal(); document.body.classList.add('modal-open');
+
+  const bottom = document.createElement('footer');
+  bottom.className = 'case-page-bottom reveal';
+  bottom.innerHTML = '<h2>Case documents</h2><p>Read the short summary first, then review the executive slides or complete thesis depending on the depth required.</p>';
+  bottom.appendChild(docActions);
+  bottom.appendChild(downloads);
+  const backBottom = document.createElement('button');
+  backBottom.type = 'button';
+  backBottom.className = 'case-back case-back-bottom magnetic';
+  backBottom.dataset.cursor = 'Go back';
+  backBottom.textContent = '← Back to portfolio';
+  bottom.appendChild(backBottom);
+  page.appendChild(bottom);
+
+  mount.appendChild(page);
+  page.querySelectorAll('.case-back').forEach((button) => button.addEventListener('click', () => closeCasePage(true)));
+  page.querySelectorAll('.case-page-actions .case-link, .case-download-link').forEach((node) => {
+    if (!node.dataset.cursor) node.dataset.cursor = node.textContent.replace(/\s+/g, ' ').trim();
+  });
+  initObservers();
 }
 
 function renderSkills() {
@@ -557,6 +626,7 @@ function renderNavigation() {
 }
 
 function renderSections() {
+  document.body.classList.remove('case-page-open');
   const mount = byId('sectionMount');
   mount.replaceChildren();
   state.sections.clear();
@@ -655,7 +725,7 @@ function initCursor() {
   if (finePointer && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     window.addEventListener('mousemove', (event) => {
       cursor.style.transform = `translate3d(${event.clientX}px,${event.clientY}px,0)`;
-      const clickable = event.target.closest('a, button');
+      const clickable = event.target.closest('a, button, [role="button"], .consulting-case-card');
       cursor.classList.toggle('is-link', Boolean(clickable));
       document.body.classList.toggle('cursor-over-link', Boolean(clickable));
       const visibleLabel = clickable?.textContent?.replace(/\s+/g, ' ').trim();
@@ -731,6 +801,23 @@ async function boot() {
     initInteractions();
     initObservers();
     initCursor();
+    const initialCase = location.hash.match(/^#case-(\d+)$/);
+    if (initialCase) {
+      const idx = Math.max(0, Number(initialCase[1]) - 1);
+      const item = (state.content.cases || []).filter((caseItem) => caseItem.visible)[idx];
+      if (item) renderCasePage(item, idx);
+    }
+    window.addEventListener('popstate', () => {
+      const match = location.hash.match(/^#case-(\d+)$/);
+      if (match) {
+        const idx = Math.max(0, Number(match[1]) - 1);
+        const item = (state.content.cases || []).filter((caseItem) => caseItem.visible)[idx];
+        if (item) renderCasePage(item, idx);
+      } else {
+        renderSections();
+        initObservers();
+      }
+    });
   } catch (error) {
     byId('loadingScreen').innerHTML = `<div class="loading-mark">!</div><span>${error.message}</span>`;
     return;
